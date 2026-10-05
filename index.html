@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 検索エンジンに登録されないようにする設定 -->
+    <meta name="robots" content="noindex, nofollow">
+    <title>HoopManager Pro v4.5 - スプレッドシート連携バスケ総合管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .mobile-view-container {
+            max-width: 480px !important;
+            margin: 0 auto;
+        }
+        input[type="number"] {
+            text-align: center !important;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar bg-white text-slate-800 relative">
+
+    <!-- メンバー専用アクセスゲート（合言葉保護画面） -->
+    <div id="circle-access-gate" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-5 text-center">
+            <div class="w-16 h-16 bg-orange-100 border border-orange-300 text-orange-600 rounded-3xl flex items-center justify-center mx-auto text-3xl shadow-sm">
+                🏀
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 tracking-tight">サークルメンバー専用アクセス</h2>
+                <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    このWebアプリは関係者限定です。<br>閲覧するにはサークル共有の合言葉を入力してください。
+                </p>
+            </div>
+            <div class="space-y-3">
+                <input type="password" id="circle-passcode-input" placeholder="合言葉を入力" 
+                    onkeydown="if(event.key==='Enter') verifyCircleGatePasscode()"
+                    class="w-full bg-slate-50 border border-slate-300 text-center text-lg font-mono py-2.5 text-slate-900 rounded-xl focus:outline-none focus:border-orange-500 shadow-inner">
+                <button onclick="verifyCircleGatePasscode()" class="w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all">
+                    認証してアプリを開く
+                </button>
+            </div>
+            <p class="text-[11px] text-slate-400">初期合言葉: <span class="font-mono font-bold text-slate-600">hoop2026</span></p>
+        </div>
+    </div>
+
+    <!-- ヘッダー -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center py-3 gap-3">
+                
+                <div class="flex items-center justify-between w-full md:w-auto">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="switchNav('dashboard')">
+                        <div class="p-2.5 bg-orange-600 rounded-xl text-white shadow-lg shadow-orange-600/30">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M4.93 4.93 19.07 19.07"></path>
+                                <path d="M4.93 19.07 19.07 4.93"></path>
+                                <path d="M12 2a10 10 0 0 1 0 20"></path>
+                                <path d="M2 12a10 10 0 0 1 20 0"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                                HoopManager Pro
+                                <span id="sync-status-badge" class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>ローカル保存</span>
+                                </span>
+                            </h1>
+                            <p class="text-xs text-slate-500" id="t-subtitle">多機能バスケスコア＆クラウド同期管理</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 md:hidden">
+                        <button onclick="fetchCloudDataManual()" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 text-xs font-semibold" title="最新データ同期">
+                            🔄
+                        </button>
+                        <button onclick="requestPasscodeProtection(() => openSettingsModal())" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 transition-colors" title="設定">
+                            <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <nav class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-full md:w-auto overflow-x-auto custom-scrollbar">
+                        <button id="nav-dashboard" onclick="switchNav('dashboard')" class="flex-1 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-orange-600 text-white shadow whitespace-nowrap flex items-center justify-center gap-1.5">
+                            🏆 <span id="t-nav-tournaments">大会一覧</span>
+                        </button>
+                        <button id="nav-players" onclick="switchNav('players')" class="flex-1 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1.5">
+                            🏃 <span id="t-nav-players">選手＆スタッツ</span>
+                        </button>
+                        <button id="nav-guide" onclick="switchNav('guide')" class="flex-1 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1.5">
+                            📊 <span id="t-nav-guide">数式ガイド</span>
+                        </button>
+                    </nav>
+
+                    <button onclick="fetchCloudDataManual()" class="hidden md:flex px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 text-xs font-semibold items-center gap-1 transition-colors" title="Googleスプレッドシートから最新データ取得">
+                        🔄 再読込
+                    </button>
+
+                    <button onclick="requestPasscodeProtection(() => openSettingsModal())" class="hidden md:flex p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 transition-colors items-center gap-1" title="設定">
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- VIEW 1: 大会一覧 -->
+        <div id="view-dashboard" class="space-y-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                <div class="space-y-1">
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-orange-500 inline-block animate-pulse"></span>
+                        <span id="t-dashboard-title">大会ダッシュボード</span>
+                    </h2>
+                    <p class="text-xs text-slate-500" id="t-dashboard-desc">登録された大会の開催状況・スケジュール（最新日付順）</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div class="relative min-w-[240px]">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="text" id="tournament-search-input" oninput="renderTournaments()" placeholder="大会名、場所、タグで検索..." 
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500">
+                    </div>
+                    <button onclick="requestPasscodeProtection(() => openCreateTournamentModal())" class="bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span id="t-create-tour-btn">新規大会を作成</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="tournament-tags-filter" class="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar text-xs"></div>
+
+            <div id="tournament-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+        </div>
+
+        <!-- VIEW 2: 大会詳細画面 -->
+        <div id="view-tournament-detail" class="space-y-6 hidden">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex items-start gap-3">
+                    <button onclick="switchNav('dashboard')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl border border-slate-300 transition-colors mt-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="detail-tournament-date" class="text-xs text-orange-700 font-mono font-semibold bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-full"></span>
+                            <span id="detail-tournament-time" class="text-xs text-slate-600 font-mono bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full"></span>
+                            <span id="detail-tournament-location-badge" class="text-xs text-cyan-800 font-medium bg-cyan-50 border border-cyan-200 px-2.5 py-0.5 rounded-full flex items-center gap-1"></span>
+                        </div>
+                        <h2 id="detail-tournament-title" class="text-xl font-bold text-slate-900 tracking-tight mt-1"></h2>
+                        <div id="detail-tournament-tags" class="flex gap-1.5 mt-2 flex-wrap"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="openFullRuleModal()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs px-3 py-2 rounded-xl border border-amber-300 font-semibold transition-colors flex items-center gap-1.5">
+                        📜 大会ルール・注意事項を見る
+                    </button>
+                    <button onclick="requestPasscodeProtection(() => openCourtManageModal())" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 font-medium">
+                        🏀 コート管理
+                    </button>
+                    <button onclick="requestPasscodeProtection(() => openAddTournamentTeamModal())" class="bg-orange-600 hover:bg-orange-500 text-white text-xs px-3 py-2 rounded-xl font-semibold shadow transition-colors flex items-center gap-1.5">
+                        ＋ 大会にチームを追加
+                    </button>
+                    <button onclick="requestPasscodeProtection(() => confirmDeleteTournament())" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-2 rounded-xl transition-colors" title="大会を削除">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 pb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                                試合対戦カード (コート別表示・スコア中央表示)
+                            </h3>
+                            <p class="text-xs text-slate-500">同時刻の複数コート試合を表示。大きな中央の数字で直接スコア入力可能。</p>
+                        </div>
+                        <button onclick="addMatchRow()" class="bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition-colors">
+                            ＋ 試合カードを追加
+                        </button>
+                    </div>
+
+                    <div id="matches-time-grouped-container" class="space-y-4"></div>
+                </div>
+
+                <!-- 順位表 -->
+                <div id="ranking-container-card" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 transition-all">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-200 pb-4">
+                        <div class="space-y-1">
+                            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                🏆 大会順位表 (ランキング)
+                            </h3>
+                            <p class="text-xs text-slate-500">順位決定: 勝ち点 ➔ 得失点差 ➔ 総得点</p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                                <span class="text-slate-500">集計対象:</span>
+                                <select id="ranking-time-filter" onchange="recalculateDetailRanking()" class="bg-white text-slate-800 font-semibold rounded px-2 py-1 border border-slate-300 focus:outline-none focus:border-orange-500">
+                                    <option value="ALL">全時間帯 (最新状況)</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center bg-slate-100 border border-slate-200 p-0.5 rounded-xl">
+                                <button id="btn-size-responsive" onclick="toggleRankingViewSize('responsive')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 text-white shadow">標準</button>
+                                <button id="btn-size-compact" onclick="toggleRankingViewSize('compact')" class="px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">スマホ用</button>
+                            </div>
+
+                            <button onclick="generateRankingPNG()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-xl font-semibold transition-colors flex items-center gap-1 shadow-sm">
+                                🖼️ PNG画像保存
+                            </button>
+                            <button onclick="shareRankingPNG()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-xl font-semibold transition-colors flex items-center gap-1 shadow-sm">
+                                📲 共有 (LINE等)
+                            </button>
+                            <button onclick="copyRankingAsText()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs px-3 py-1.5 rounded-xl font-medium transition-colors">📋 テキストコピー</button>
+                            <button onclick="downloadRankingCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs px-3 py-1.5 rounded-xl font-medium transition-colors">📥 CSV保存</button>
+                        </div>
+                    </div>
+
+                    <div id="ranking-table-wrapper" class="overflow-x-auto custom-scrollbar bg-white p-2 rounded-xl">
+                        <table class="w-full text-left text-sm text-slate-800" id="ranking-table-element">
+                            <thead>
+                                <tr class="bg-slate-100 text-[11px] font-bold text-slate-600 uppercase border-b border-slate-200">
+                                    <th class="p-2.5 text-center w-12">順位</th>
+                                    <th class="p-2.5">チーム</th>
+                                    <th class="p-2.5 text-center">試合</th>
+                                    <th class="p-2.5 text-center">勝</th>
+                                    <th class="p-2.5 text-center">負</th>
+                                    <th class="p-2.5 text-center font-bold text-orange-600">勝ち点</th>
+                                    <th class="p-2.5 text-center">得点</th>
+                                    <th class="p-2.5 text-center">失点</th>
+                                    <th class="p-2.5 text-center font-bold text-emerald-600">得失差</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-ranking-tbody" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: 選手＆個人スタッツランキング画面 -->
+        <div id="view-players" class="space-y-6 hidden">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">🏃 選手登録 ＆ スタッツリーダーズ</h2>
+                    <p class="text-xs text-slate-500">選手の登録、画像アップロード、個人スタッツ（得点・3P・リバウンド等）ランキング</p>
+                </div>
+                <button onclick="requestPasscodeProtection(() => openCreatePlayerModal())" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow">＋ 新規選手を登録</button>
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-sm font-bold text-orange-600 uppercase tracking-wider">🔥 個人スタッツ TOP 5</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="player-leaderboards-container"></div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 class="text-base font-bold text-slate-900">📋 登録選手一覧</h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs text-slate-800">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 border-b border-slate-200 uppercase font-semibold">
+                                <th class="p-3 text-center">写真</th>
+                                <th class="p-3">選手名</th>
+                                <th class="p-3">所属チーム</th>
+                                <th class="p-3 text-center">POS</th>
+                                <th class="p-3 text-center">出場時間 (MIN)</th>
+                                <th class="p-3 text-center">得点 (PTS)</th>
+                                <th class="p-3 text-center">2P</th>
+                                <th class="p-3 text-center">3P</th>
+                                <th class="p-3 text-center">REB</th>
+                                <th class="p-3 text-center">AST</th>
+                                <th class="p-3 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-players-tbody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 4: 数式ガイド画面 -->
+        <div id="view-guide" class="space-y-6 hidden">
+            <div class="bg-white text-slate-800 border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Googleスプレッドシート作成・数式ガイド
+                </h2>
+                <p class="text-xs text-slate-600 leading-relaxed mb-6">
+                    スプレッドシートでスコアを入力するだけで自動集計・ソート順位表を作成できる関数一覧です。コピーボタンでそのまま貼り付けできます。
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                            勝利数の集計数式 (COUNTIFS)
+                        </h3>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-xs font-bold text-blue-700">■ 勝利数計算</span>
+                                <button onclick="copyToClipboard('COUNTIFS($B$5:$B$100, G5, $C$5:$C$100, &quot;&gt;&quot;&amp;$D$5:$D$100) + COUNTIFS($E$5:$E$100, G5, $D$5:$D$100, &quot;&gt;&quot;&amp;$C$5:$C$100)')" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded font-semibold">コピー</button>
+                            </div>
+                            <code class="text-xs font-mono text-emerald-700 block bg-white p-2.5 rounded border border-slate-300 overflow-x-auto">
+                                =COUNTIFS($B$5:$B$100, G5, $C$5:$C$100, ">"&$D$5:$D$100) + COUNTIFS($E$5:$E$100, G5, $D$5:$D$100, ">"&$C$5:$C$100)
+                            </code>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                            自動順位並び替え関数 (SORT)
+                        </h3>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-xs font-bold text-orange-600">★ 自動順位ソート (勝ち点➔得失点差➔得点)</span>
+                                <button onclick="copyToClipboard('=SORT(G5:N8, 5, FALSE, 8, FALSE, 6, FALSE)')" class="text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-0.5 rounded font-semibold">コピー</button>
+                            </div>
+                            <code class="text-xs font-mono text-slate-800 block bg-white p-2.5 rounded border border-slate-300 overflow-x-auto">
+                                =SORT(G5:N8, 5, FALSE, 8, FALSE, 6, FALSE)
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- モーダル各種 -->
+    <div id="modal-full-rule" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-4xl p-6 md:p-8 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">📜</span>
+                    <h3 id="full-rule-modal-title" class="text-xl font-bold text-slate-900">大会ルール・注意事項</h3>
+                </div>
+                <button onclick="closeModal('modal-full-rule')" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">✕</button>
+            </div>
+            <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-5 overflow-y-auto">
+                <pre id="full-rule-modal-content" class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-sans"></pre>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-full-rule')" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者設定保護パスコード -->
+    <div id="modal-passcode" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-xs p-6 shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 bg-orange-100 border border-orange-300 text-orange-600 rounded-2xl flex items-center justify-center mx-auto text-xl">🔒</div>
+            <div>
+                <h3 class="text-base font-bold text-slate-900">編集・管理者パスワード認証</h3>
+                <p class="text-xs text-slate-500 mt-1">編集・削除操作には4桁のパスワードが必要です（初期値: 1234）</p>
+            </div>
+            <input type="password" maxlength="4" id="passcode-input" placeholder="****" class="w-full bg-slate-50 border border-slate-300 text-center text-2xl font-mono tracking-widest py-2 text-slate-900 rounded-xl focus:outline-none focus:border-orange-500">
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal('modal-passcode')" class="w-full py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold border border-slate-300">キャンセル</button>
+                <button onclick="verifyPasscode()" class="w-full py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold shadow">認証</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- システム設定モーダル -->
+    <div id="modal-settings" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">⚙️ システム設定 ＆ GASクラウド同期</h3>
+                <button onclick="closeModal('modal-settings')" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+
+            <!-- Google Apps Script (GAS) 連携URLの設定 -->
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="block text-xs font-bold text-emerald-900">🌐 Googleスプレッドシート (GAS) 連携設定</label>
+                    <span id="gas-setting-badge" class="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded font-bold">未設定</span>
+                </div>
+                <p class="text-[11px] text-emerald-700 leading-relaxed">
+                    GASでデプロイした「ウェブアプリURL」を入力すると、入力データが即座にGoogleスプレッドシートへリアルタイム自動同期されます。
+                </p>
+                <div class="space-y-2">
+                    <input type="url" id="setting-gas-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-mono">
+                    <div class="flex gap-2">
+                        <button onclick="updateGasUrl()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded-xl font-semibold shadow">URLを保存して接続</button>
+                        <button onclick="fetchCloudDataManual()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs px-3 py-2 rounded-xl font-semibold">データ今すぐ同期</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- サークル共通合言葉の変更 -->
+            <div class="space-y-2 pt-2 border-t border-slate-200">
+                <label class="block text-xs font-bold text-slate-700">🔐 サークル閲覧用「合言葉」の変更</label>
+                <div class="flex gap-2">
+                    <input type="text" id="setting-circle-gate-passcode" placeholder="例: hoop2026" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800">
+                    <button onclick="updateCircleGatePasscode()" class="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-2 rounded-xl font-semibold">変更</button>
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-slate-200">
+                <label class="block text-xs font-bold text-slate-700">🌐 表示言語設定 (Language)</label>
+                <select id="setting-language" onchange="changeLanguage(this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800">
+                    <option value="ja">日本語 (Japanese)</option>
+                    <option value="en">English</option>
+                    <option value="zh">中文 (Chinese)</option>
+                </select>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-slate-200">
+                <label class="block text-xs font-bold text-slate-700">🔑 管理者編集パスワードの変更 (4桁)</label>
+                <div class="flex gap-2">
+                    <input type="password" id="new-passcode-input" maxlength="4" placeholder="新しい4桁パスワード" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800">
+                    <button onclick="updatePasscode()" class="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-2 rounded-xl font-semibold">変更</button>
+                </div>
+            </div>
+
+            <div class="space-y-3 pt-2 border-t border-slate-200">
+                <div class="flex justify-between items-center">
+                    <label class="block text-xs font-bold text-slate-700">📜 大会別ルール・注意事項の作成・管理</label>
+                    <button onclick="openRuleEditModal()" class="text-[11px] bg-orange-600 hover:bg-orange-500 text-white px-2.5 py-1 rounded-lg font-medium">＋ 新規ルール追加</button>
+                </div>
+                <div id="rules-list-container" class="space-y-2"></div>
+            </div>
+
+            <div class="space-y-3 pt-2 border-t border-slate-200">
+                <label class="block text-xs font-bold text-slate-700">🗑️ 削除データの復元 (ゴミ箱アーカイブ)</label>
+                <div id="trash-list-container" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar"></div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-settings')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold border border-slate-300">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ルール編集モーダル -->
+    <div id="modal-rule-edit" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <h3 class="text-base font-bold text-slate-900">📜 大会ルール・注意事項の作成 / 編集</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">ルール・ガイド名</label>
+                    <input type="text" id="rule-name-input" placeholder="例: 2026年度 サークル秋季ルール・注意事項" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                </div>
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">注意事項・ルール本文</label>
+                    <textarea id="rule-content-input" rows="8" placeholder="【大会マナー・注意事項】&#10;1. コート内は土足厳禁です。&#10;2. 審判への抗議はチームキャプテンのみ行えます。" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 font-sans leading-relaxed"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-rule-edit')" class="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold">キャンセル</button>
+                <button onclick="saveRuleEdit()" class="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 大会作成モーダル -->
+    <div id="modal-create-tournament" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">🏆 新規大会の作成</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">大会名</label>
+                    <input type="text" id="new-tournament-name" list="past-tournament-names-list" placeholder="例: 2026年 サークル秋季カップ" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-orange-500">
+                    <datalist id="past-tournament-names-list"></datalist>
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">開催場所 (Googleマップ連携)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-tournament-location" placeholder="例: 東京体育館 メインアリーナ" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-orange-500">
+                        <button type="button" onclick="testGoogleMapLocation()" class="bg-cyan-50 text-cyan-800 border border-cyan-300 px-3 py-2 rounded-xl text-xs whitespace-nowrap font-medium">🗺 Map確認</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-700 mb-1 font-semibold">開催日</label>
+                        <input type="date" id="new-tournament-date" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1 font-semibold">開催時間</label>
+                        <div class="flex items-center gap-1">
+                            <input type="time" id="new-tournament-time-start" value="09:00" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-1.5 py-2 text-slate-800 text-center font-mono">
+                            <span>-</span>
+                            <input type="time" id="new-tournament-time-end" value="18:00" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-1.5 py-2 text-slate-800 text-center font-mono">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">適用するルール・注意事項</label>
+                    <select id="new-tournament-rule" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-orange-500"></select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">タグ (カンマ区切り)</label>
+                    <input type="text" id="new-tournament-tags" placeholder="例: サークル内, 秋季, 男子" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:border-orange-500">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-create-tournament')" class="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold">キャンセル</button>
+                <button onclick="saveNewTournament()" class="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold">作成する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- チーム追加モーダル -->
+    <div id="modal-add-tournament-team" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <h3 class="text-base font-bold text-slate-900">🛡️ 大会にチームを追加</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">チーム名</label>
+                    <input type="text" id="tournament-team-name-input" placeholder="例: ライジングサンズ" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-add-tournament-team')" class="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold">キャンセル</button>
+                <button onclick="saveTournamentTeam()" class="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 選手登録モーダル -->
+    <div id="modal-create-player" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <h3 class="text-base font-bold text-slate-900">🏃 選手の新規登録</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">アイコン / 選手写真</label>
+                    <div class="flex items-center gap-3">
+                        <div id="player-avatar-preview" class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center overflow-hidden text-2xl font-bold">👤</div>
+                        <label class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 px-3 py-2 rounded-xl cursor-pointer text-xs font-semibold">
+                            📁 画像を選択
+                            <input type="file" accept="image/*" onchange="handleImageUpload(event, 'player')" class="hidden">
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">背番号</label>
+                    <input type="number" id="new-player-number" placeholder="23" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                </div>
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">選手氏名</label>
+                    <input type="text" id="new-player-name" placeholder="山田 太郎" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                </div>
+                <div>
+                    <label class="block text-slate-700 mb-1 font-semibold">ポジション</label>
+                    <select id="new-player-pos" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                        <option value="PG">PG (ポイントガード)</option>
+                        <option value="SG">SG (シューティングガード)</option>
+                        <option value="SF">SF (スモールフォワード)</option>
+                        <option value="PF">PF (パワーフォワード)</option>
+                        <option value="C">C (センター)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-create-player')" class="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold">キャンセル</button>
+                <button onclick="saveNewPlayer()" class="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold">登録する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- コート管理モーダル -->
+    <div id="modal-court-manage" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <h3 class="text-base font-bold text-slate-900">🏀 コートの構成管理</h3>
+            <div id="court-list-container" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar"></div>
+            <div class="flex gap-2 pt-2">
+                <input type="text" id="new-court-name-input" placeholder="例: Cコート" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800">
+                <button onclick="addNewCourt()" class="bg-orange-600 hover:bg-orange-500 text-white text-xs px-3 py-2 rounded-xl font-semibold">追加</button>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-slate-200">
+                <button onclick="closeModal('modal-court-manage')" class="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認モーダル -->
+    <div id="modal-confirm" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-red-600">
+                <div class="p-2 bg-red-100 border border-red-200 rounded-xl">⚠️</div>
+                <h3 id="modal-confirm-title" class="text-base font-bold text-slate-900">確認</h3>
+            </div>
+            <p id="modal-confirm-msg" class="text-xs text-slate-600 leading-relaxed"></p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeConfirmModal(false)" class="px-4 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold">キャンセル</button>
+                <button onclick="closeConfirmModal(true)" class="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-semibold">実行する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-orange-600 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium transition-all duration-300 opacity-0 pointer-events-none translate-y-2 z-50 flex items-center gap-2">
+        <span id="toast-msg">通知</span>
+    </div>
+
+    <!-- アプリのJavaScriptロジック -->
+    <script>
+        const DICT = {
+            ja: {
+                subtitle: '多機能バスケスコア＆クラウド同期管理',
+                tournaments: '大会一覧', players: '選手＆スタッツ', guide: '数式ガイド',
+                dashboardTitle: '大会ダッシュボード', dashboardDesc: '登録された大会の開催状況・スケジュール（最新日付順）', createTour: '新規大会を作成'
+            },
+            en: {
+                subtitle: 'Basketball Tournament & Cloud Sync Manager',
+                tournaments: 'Tournaments', players: 'Players & Stats', guide: 'Formula Guide',
+                dashboardTitle: 'Tournament Dashboard', dashboardDesc: 'Schedule and active tournaments sorted by date', createTour: 'Create Tournament'
+            },
+            zh: {
+                subtitle: '篮球联赛与云端同步综合管理',
+                tournaments: '赛事列表', players: '球员与数据', guide: '表格公式指南',
+                dashboardTitle: '赛事仪表板', dashboardDesc: '按最新日期排序的赛事列表与赛程', createTour: '新建赛事'
+            }
+        };
+
+        const LOCAL_STORAGE_KEY = 'hoop_manager_data_v4.5';
+
+        // 初期データ（LocalStorageに無ければ適用）
+        const defaultState = {
+            lang: 'ja',
+            passcode: '1234',
+            circleGatePasscode: 'hoop2026',
+            gasUrl: '', // Google Apps Script URL
+            circleAuthenticated: false,
+            pendingCallback: null,
+            activeNav: 'dashboard',
+            activeTournamentId: null,
+            activeTag: 'ALL',
+            tempImage: null,
+            
+            rules: [
+                {
+                    id: 'rule-std-notes',
+                    name: '2026年度 サークル秋季ルール・注意事項',
+                    content: '【サークル注意事項・運用マナー】\n1. 体育館内は全館土足厳禁です。必ず室内用シューズをご持参ください。\n2. 審判への異議申し立ては、コート上のチームキャプテンのみ行えます。\n3. 各チームは試合開始15分前までに審判席へメンバー表を提出してください。\n4. ゴミは各チームで責任を持って全て持ち帰るようご協力お願いいたします。'
+                }
+            ],
+
+            players: [
+                { id: 'p1', number: '4', name: '佐藤 健太', pos: 'PG', icon: '🏃', min: 28, pts: 42, fg2: 12, fg3: 4, reb: 11, ast: 18 },
+                { id: 'p2', number: '7', name: '田中 翔', pos: 'SG', icon: '⭐', min: 24, pts: 38, fg2: 8, fg3: 6, reb: 8, ast: 9 },
+                { id: 'p3', number: '11', name: '高橋 陸', pos: 'SF', icon: '💪', min: 22, pts: 25, fg2: 8, fg3: 3, reb: 19, ast: 4 },
+                { id: 'p4', number: '5', name: '鈴木 拓也', pos: 'PG', icon: '👤', min: 26, pts: 31, fg2: 11, fg3: 3, reb: 9, ast: 22 },
+                { id: 'p5', number: '10', name: '渡辺 勇気', pos: 'C', icon: '🕶️️', min: 30, pts: 28, fg2: 14, fg3: 0, reb: 32, ast: 6 }
+            ],
+
+            tournaments: [
+                {
+                    id: 'tour-2026-autumn',
+                    name: '2026年 サークル秋季バスケットボール大会',
+                    location: '東京体育館 メインアリーナ',
+                    date: '2026-10-01',
+                    timeStart: '09:00',
+                    timeEnd: '17:00',
+                    ruleId: 'rule-std-notes',
+                    tags: ['サークル内', '秋季'],
+                    courts: ['Aコート', 'Bコート'],
+                    teams: ['Aチーム (レッド)', 'Bチーム (ブルー)', 'Cチーム (グリーン)', 'Dチーム (イエロー)'],
+                    matches: [
+                        { id: 'm101', time: '10:00', court: 'Aコート', teamA: 'Aチーム (レッド)', scoreA: 82, scoreB: 74, teamB: 'Bチーム (ブルー)' },
+                        { id: 'm102', time: '10:00', court: 'Bコート', teamA: 'Cチーム (グリーン)', scoreA: 65, scoreB: 70, teamB: 'Dチーム (イエロー)' },
+                        { id: 'm103', time: '11:30', court: 'Aコート', teamA: 'Aチーム (レッド)', scoreA: 91, scoreB: 88, teamB: 'Cチーム (グリーン)' }
+                    ]
+                }
+            ],
+
+            trash: []
+        };
+
+        let state = defaultState;
+
+        // データ読み込み & 保存関数
+        function loadStateFromStorage() {
+            try {
+                const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state = { ...defaultState, ...parsed };
+                }
+            } catch (e) {
+                console.error("Storage load error:", e);
+            }
+        }
+
+        function saveStateToStorage() {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+                if (state.gasUrl) {
+                    syncToGoogleSheets();
+                }
+            } catch (e) {
+                console.error("Storage save error:", e);
+            }
+        }
+
+        // Googleスプレッドシート(GAS) への同期関数 (CORS制限を回避するため text/plain で送信)
+        async function syncToGoogleSheets() {
+            if (!state.gasUrl) return;
+            try {
+                updateSyncBadge('syncing', 'クラウド同期中...');
+                await fetch(state.gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(state)
+                });
+                updateSyncBadge('gas', '🟢 スプレッドシート同期済み');
+            } catch (err) {
+                console.error("GAS sync error:", err);
+                updateSyncBadge('error', '⚠️ クラウド送信失敗');
+            }
+        }
+
+        // Googleスプレッドシートからの手動データ読み込み
+        async function fetchCloudDataManual() {
+            if (!state.gasUrl) {
+                showToast('スプレッドシート連携URLが設定されていません');
+                openSettingsModal();
+                return;
+            }
+
+            try {
+                showToast('スプレッドシートから最新データを取得中...');
+                updateSyncBadge('syncing', 'クラウド読込中...');
+                const res = await fetch(state.gasUrl);
+                const rawText = await res.text();
+                
+                let cloudState = null;
+                try {
+                    cloudState = JSON.parse(rawText);
+                } catch(e) {
+                    console.error("JSON parse error:", e);
+                }
+
+                if (cloudState && cloudState.tournaments) {
+                    state = { ...state, ...cloudState };
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+                    renderTournaments();
+                    if (state.activeNav === 'players') renderPlayersView();
+                    if (state.activeNav === 'detail') openTournamentDetail(state.activeTournamentId);
+                    updateSyncBadge('gas', '🟢 スプレッドシート同期済み');
+                    showToast('最新データをクラウドから更新しました！');
+                } else {
+                    showToast('有効なデータがスプレッドシートに見つかりませんでした');
+                    updateSyncBadge('gas', '🟢 接続確認完了');
+                }
+            } catch (err) {
+                console.error("Fetch Cloud Error:", err);
+                showToast('クラウドからのデータ読み込みに失敗しました');
+                updateSyncBadge('error', '⚠️ クラウド接続エラー');
+            }
+        }
+
+        function updateSyncBadge(status, label) {
+            const badge = document.getElementById('sync-status-badge');
+            if (!badge) return;
+
+            if (status === 'gas') {
+                badge.className = 'text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-mono flex items-center gap-1';
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>${label}</span>`;
+            } else if (status === 'syncing') {
+                badge.className = 'text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full font-mono flex items-center gap-1';
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span><span>${label}</span>`;
+            } else if (status === 'error') {
+                badge.className = 'text-[10px] bg-red-100 text-red-800 border border-red-300 px-2 py-0.5 rounded-full font-mono flex items-center gap-1';
+                badge.innerHTML = `<span>${label}</span>`;
+            } else {
+                badge.className = 'text-[10px] bg-slate-100 text-slate-700 border border-slate-300 px-2 py-0.5 rounded-full font-mono flex items-center gap-1';
+                badge.innerHTML = `<span>📱 ローカル保存</span>`;
+            }
+        }
+
+        window.onload = function() {
+            loadStateFromStorage();
+            
+            // サークル合言葉認証のチェック
+            if (sessionStorage.getItem('circle_auth_passed') === 'true') {
+                document.getElementById('circle-access-gate').classList.add('hidden');
+            } else {
+                document.getElementById('circle-access-gate').classList.remove('hidden');
+            }
+
+            document.getElementById('setting-circle-gate-passcode').value = state.circleGatePasscode || 'hoop2026';
+            document.getElementById('setting-gas-url').value = state.gasUrl || '';
+
+            if (state.gasUrl) {
+                updateSyncBadge('gas', '🟢 スプレッドシート同期可能');
+                document.getElementById('gas-setting-badge').innerText = '接続済み';
+                document.getElementById('gas-setting-badge').className = 'text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold';
+            }
+
+            sortTournamentsByDate();
+            renderTournaments();
+            renderPlayersView();
+        };
+
+        function updateGasUrl() {
+            const url = document.getElementById('setting-gas-url').value.trim();
+            state.gasUrl = url;
+            saveStateToStorage();
+            if (url) {
+                showToast('GAS連携URLを保存しました。接続をテストします。');
+                fetchCloudDataManual();
+            } else {
+                updateSyncBadge('local', '📱 ローカル保存');
+                document.getElementById('gas-setting-badge').innerText = '未設定';
+                document.getElementById('gas-setting-badge').className = 'text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded font-bold';
+                showToast('GAS連携を解除しました');
+            }
+        }
+
+        // サークル合言葉認証
+        function verifyCircleGatePasscode() {
+            const input = document.getElementById('circle-passcode-input').value.trim();
+            const target = state.circleGatePasscode || 'hoop2026';
+
+            if (input === target) {
+                sessionStorage.setItem('circle_auth_passed', 'true');
+                document.getElementById('circle-access-gate').classList.add('hidden');
+                showToast('認証に成功しました');
+            } else {
+                showToast('合言葉が違います');
+            }
+        }
+
+        function updateCircleGatePasscode() {
+            const input = document.getElementById('setting-circle-gate-passcode').value.trim();
+            if (!input) { showToast('合言葉を入力してください'); return; }
+            state.circleGatePasscode = input;
+            saveStateToStorage();
+            showToast('サークル合言葉を変更しました');
+        }
+
+        let pendingConfirmAction = null;
+        function openConfirmModal(title, msg, onConfirm) {
+            document.getElementById('modal-confirm-title').innerText = title;
+            document.getElementById('modal-confirm-msg').innerText = msg;
+            pendingConfirmAction = onConfirm;
+            document.getElementById('modal-confirm').classList.remove('hidden');
+        }
+
+        function closeConfirmModal(confirmed) {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            if (confirmed && typeof pendingConfirmAction === 'function') {
+                pendingConfirmAction();
+            }
+            pendingConfirmAction = null;
+        }
+
+        function openFullRuleModal() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            const rule = state.rules.find(r => r.id === (tour ? tour.ruleId : null)) || state.rules[0];
+            document.getElementById('full-rule-modal-title').innerText = rule ? rule.name : '大会ルール・注意事項';
+            document.getElementById('full-rule-modal-content').innerText = rule ? rule.content : '注意事項はありません。';
+            document.getElementById('modal-full-rule').classList.remove('hidden');
+        }
+
+        function openRuleEditModal() {
+            document.getElementById('rule-name-input').value = '';
+            document.getElementById('rule-content-input').value = '';
+            document.getElementById('modal-rule-edit').classList.remove('hidden');
+        }
+
+        function saveRuleEdit() {
+            const name = document.getElementById('rule-name-input').value.trim();
+            const content = document.getElementById('rule-content-input').value.trim();
+            if (!name) { showToast('ルール名を入力してください'); return; }
+
+            state.rules.push({ id: 'rule-' + Date.now(), name, content });
+            saveStateToStorage();
+            closeModal('modal-rule-edit');
+            renderRulesList();
+            showToast('新規ルールを追加しました');
+        }
+
+        function openCourtManageModal() {
+            renderCourtList();
+            document.getElementById('modal-court-manage').classList.remove('hidden');
+        }
+
+        function renderCourtList() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const container = document.getElementById('court-list-container');
+            container.innerHTML = (tour.courts || []).map((c, idx) => `
+                <div class="flex justify-between items-center bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs">
+                    <span class="text-slate-800 font-semibold">${c}</span>
+                    <button onclick="removeCourt(${idx})" class="text-red-500 hover:text-red-700">削除</button>
+                </div>
+            `).join('');
+        }
+
+        function addNewCourt() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const input = document.getElementById('new-court-name-input');
+            const name = input.value.trim();
+            if (!name) return;
+            if (!tour.courts) tour.courts = [];
+            tour.courts.push(name);
+            input.value = '';
+            saveStateToStorage();
+            renderCourtList();
+            renderTimeGroupedMatches();
+            showToast('コートを追加しました');
+        }
+
+        function removeCourt(idx) {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour || !tour.courts) return;
+            tour.courts.splice(idx, 1);
+            saveStateToStorage();
+            renderCourtList();
+            renderTimeGroupedMatches();
+            showToast('コートを削除しました');
+        }
+
+        function openAddTournamentTeamModal() {
+            document.getElementById('tournament-team-name-input').value = '';
+            document.getElementById('modal-add-tournament-team').classList.remove('hidden');
+        }
+
+        function saveTournamentTeam() {
+            const name = document.getElementById('tournament-team-name-input').value.trim();
+            if (!name) { showToast('チーム名を入力してください'); return; }
+
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (tour) {
+                if (!tour.teams) tour.teams = [];
+                if (!tour.teams.includes(name)) {
+                    tour.teams.push(name);
+                    saveStateToStorage();
+                    renderTimeGroupedMatches();
+                    recalculateDetailRanking();
+                    showToast('チームを追加しました');
+                } else {
+                    showToast('すでに同名のチームが存在します');
+                }
+            }
+            closeModal('modal-add-tournament-team');
+        }
+
+        function addMatchRow() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const defaultTeamA = tour.teams[0] || 'チームA';
+            const defaultTeamB = tour.teams[1] || 'チームB';
+            const defaultCourt = (tour.courts && tour.courts[0]) ? tour.courts[0] : 'Aコート';
+
+            tour.matches.push({
+                id: 'm-' + Date.now(),
+                time: '12:00',
+                court: defaultCourt,
+                teamA: defaultTeamA,
+                scoreA: null,
+                scoreB: null,
+                teamB: defaultTeamB
+            });
+            saveStateToStorage();
+            updateRankingTimeFilterOptions();
+            renderTimeGroupedMatches();
+            recalculateDetailRanking();
+            showToast('試合カードを追加しました');
+        }
+
+        function updateMatchField(matchId, field, value) {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const match = tour.matches.find(m => m.id === matchId);
+            if (!match) return;
+
+            if (field === 'scoreA' || field === 'scoreB') {
+                match[field] = value === '' ? null : parseInt(value, 10);
+            } else {
+                match[field] = value;
+            }
+
+            saveStateToStorage();
+            if (field === 'time') {
+                updateRankingTimeFilterOptions();
+                renderTimeGroupedMatches();
+            }
+            recalculateDetailRanking();
+        }
+
+        function confirmDeleteMatch(matchId) {
+            openConfirmModal('試合の削除', 'この試合データカードを削除してよろしいですか？', () => {
+                const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+                if (!tour) return;
+                tour.matches = tour.matches.filter(m => m.id !== matchId);
+                saveStateToStorage();
+                renderTimeGroupedMatches();
+                recalculateDetailRanking();
+                showToast('試合を削除しました');
+            });
+        }
+
+        function toggleRankingViewSize(mode) {
+            const wrapper = document.getElementById('ranking-table-wrapper');
+            const btnResponsive = document.getElementById('btn-size-responsive');
+            const btnCompact = document.getElementById('btn-size-compact');
+
+            if (mode === 'compact') {
+                wrapper.classList.add('mobile-view-container');
+                btnCompact.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 text-white shadow';
+                btnResponsive.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900';
+            } else {
+                wrapper.classList.remove('mobile-view-container');
+                btnResponsive.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 text-white shadow';
+                btnCompact.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900';
+            }
+        }
+
+        function generateRankingPNG() {
+            const element = document.getElementById('ranking-table-wrapper');
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            showToast('画像を生成中...');
+            
+            html2canvas(element, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${tour ? tour.name : '大会'}_順位表.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('PNG画像としてダウンロードしました');
+            });
+        }
+
+        function shareRankingPNG() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            const element = document.getElementById('ranking-table-wrapper');
+            
+            if (navigator.share) {
+                html2canvas(element, { backgroundColor: '#ffffff' }).then(canvas => {
+                    canvas.toBlob(blob => {
+                        const file = new File([blob], 'ranking.png', { type: 'image/png' });
+                        navigator.share({
+                            title: tour ? tour.name : '大会順位表',
+                            text: `【${tour ? tour.name : '大会'}】の最新順位表です！`,
+                            files: [file]
+                        }).catch(() => {
+                            copyRankingAsText();
+                        });
+                    });
+                });
+            } else {
+                copyRankingAsText();
+                showToast('テキストをコピーしました (LINEへ貼り付け可能)');
+            }
+        }
+
+        function copyRankingAsText() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const rows = document.querySelectorAll('#detail-ranking-tbody tr');
+            let text = `【${tour.name}】 順位表\n順位 | チーム | 試合 | 勝 | 負 | 勝ち点 | 得点 | 失点 | 得失差\n`;
+            rows.forEach(tr => {
+                const cols = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
+                text += cols.join(' | ') + '\n';
+            });
+            copyToClipboard(text);
+        }
+
+        function downloadRankingCSV() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const rows = document.querySelectorAll('#detail-ranking-tbody tr');
+            let csv = '\uFEFF順位,チーム,試合,勝,負,勝ち点,得点,失点,得失差\n';
+            rows.forEach(tr => {
+                const cols = Array.from(tr.querySelectorAll('td')).map(td => `"${td.innerText.trim()}"`);
+                csv += cols.join(',') + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${tour.name}_順位表.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('CSVファイルをダウンロードしました');
+        }
+
+        function switchNav(nav) {
+            state.activeNav = nav;
+            document.getElementById('view-dashboard').classList.toggle('hidden', nav !== 'dashboard');
+            document.getElementById('view-tournament-detail').classList.toggle('hidden', nav !== 'detail');
+            document.getElementById('view-players').classList.toggle('hidden', nav !== 'players');
+            document.getElementById('view-guide').classList.toggle('hidden', nav !== 'guide');
+
+            ['dashboard', 'players', 'guide'].forEach(n => {
+                const btn = document.getElementById(`nav-${n}`);
+                if (btn) {
+                    btn.className = (n === nav) 
+                        ? 'flex-1 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all bg-orange-600 text-white shadow whitespace-nowrap flex items-center justify-center gap-1.5'
+                        : 'flex-1 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1.5';
+                }
+            });
+
+            if (nav === 'dashboard') renderTournaments();
+            if (nav === 'players') renderPlayersView();
+        }
+
+        function requestPasscodeProtection(callback) {
+            state.pendingCallback = callback;
+            document.getElementById('passcode-input').value = '';
+            document.getElementById('modal-passcode').classList.remove('hidden');
+        }
+
+        function verifyPasscode() {
+            const input = document.getElementById('passcode-input').value;
+            if (input === state.passcode) {
+                closeModal('modal-passcode');
+                if (typeof state.pendingCallback === 'function') state.pendingCallback();
+            } else {
+                showToast('パスワードが正しくありません');
+            }
+        }
+
+        function updatePasscode() {
+            const val = document.getElementById('new-passcode-input').value.trim();
+            if (val.length === 4) {
+                state.passcode = val;
+                saveStateToStorage();
+                showToast('パスワードを変更しました');
+            } else {
+                showToast('4桁の数字を入力してください');
+            }
+        }
+
+        function changeLanguage(lang) {
+            state.lang = lang;
+            saveStateToStorage();
+            const d = DICT[lang] || DICT['ja'];
+            document.getElementById('t-subtitle').innerText = d.subtitle;
+            document.getElementById('t-nav-tournaments').innerText = d.tournaments;
+            document.getElementById('t-nav-players').innerText = d.players;
+            document.getElementById('t-nav-guide').innerText = d.guide;
+            document.getElementById('t-dashboard-title').innerText = d.dashboardTitle;
+            document.getElementById('t-dashboard-desc').innerText = d.dashboardDesc;
+            document.getElementById('t-create-tour-btn').innerText = d.createTour;
+            showToast('言語を変更しました');
+        }
+
+        function sortTournamentsByDate() {
+            state.tournaments.sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+
+        function renderTournaments() {
+            const container = document.getElementById('tournament-grid');
+            const keyword = document.getElementById('tournament-search-input').value.trim().toLowerCase();
+            container.innerHTML = '';
+
+            const allTags = new Set();
+            state.tournaments.forEach(t => (t.tags || []).forEach(tag => allTags.add(tag)));
+            const tagContainer = document.getElementById('tournament-tags-filter');
+            tagContainer.innerHTML = `<button onclick="setTagFilter('ALL')" class="px-2.5 py-1 rounded-full border text-[11px] whitespace-nowrap ${state.activeTag === 'ALL' ? 'bg-orange-600 border-orange-500 text-white font-semibold' : 'bg-white border-slate-300 text-slate-600'}">すべて</button>`;
+            allTags.forEach(tag => {
+                tagContainer.innerHTML += `<button onclick="setTagFilter('${tag}')" class="px-2.5 py-1 rounded-full border text-[11px] whitespace-nowrap ${state.activeTag === tag ? 'bg-orange-600 border-orange-500 text-white font-semibold' : 'bg-white border-slate-300 text-slate-600'}">#${tag}</button>`;
+            });
+
+            const filtered = state.tournaments.filter(t => {
+                const matchKwd = t.name.toLowerCase().includes(keyword) || (t.location && t.location.toLowerCase().includes(keyword));
+                const matchTag = (state.activeTag === 'ALL' || (t.tags && t.tags.includes(state.activeTag)));
+                return matchKwd && matchTag;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">該当する大会が見つかりませんでした。</div>`;
+                return;
+            }
+
+            filtered.forEach(t => {
+                const card = document.createElement('div');
+                card.className = 'bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:border-orange-500 transition-all cursor-pointer flex flex-col justify-between group';
+                card.onclick = () => openTournamentDetail(t.id);
+
+                const tagBadges = (t.tags || []).map(tag => `<span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded">#${tag}</span>`).join(' ');
+
+                card.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center gap-2">
+                            <span class="text-[11px] font-mono text-orange-700 font-semibold bg-orange-50 border border-orange-200 px-2.5 py-0.5 rounded-full">📅 ${t.date} (${t.timeStart || '09:00'})</span>
+                            <span class="text-[10px] text-slate-400 group-hover:text-orange-600 transition-colors">詳細 ➔</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 group-hover:text-orange-600 transition-colors">${t.name}</h3>
+                        <div class="text-xs text-cyan-800 flex items-center gap-1 font-medium">📍 ${t.location || '場所未指定'}</div>
+                        <div class="flex flex-wrap gap-1">${tagBadges}</div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between text-xs text-slate-500">
+                        <span>${t.teams ? t.teams.length : 0}チーム / ${t.matches ? t.matches.length : 0}試合</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function setTagFilter(tag) {
+            state.activeTag = tag;
+            renderTournaments();
+        }
+
+        function testGoogleMapLocation() {
+            const loc = document.getElementById('new-tournament-location').value.trim();
+            if (!loc) { showToast('開催場所名を入力してください'); return; }
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`, '_blank');
+        }
+
+        function openTournamentDetail(id) {
+            state.activeTournamentId = id;
+            const tour = state.tournaments.find(t => t.id === id);
+            if (!tour) return;
+
+            document.getElementById('detail-tournament-title').innerText = tour.name;
+            document.getElementById('detail-tournament-date').innerText = tour.date;
+            document.getElementById('detail-tournament-time').innerText = `⏰ ${tour.timeStart || '09:00'} - ${tour.timeEnd || '18:00'}`;
+            
+            const locBadge = document.getElementById('detail-tournament-location-badge');
+            const loc = tour.location || '未設定';
+            locBadge.innerHTML = `📍 ${loc} <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}" target="_blank" class="text-orange-600 underline ml-1 font-semibold">[Map]</a>`;
+
+            const tagsContainer = document.getElementById('detail-tournament-tags');
+            tagsContainer.innerHTML = (tour.tags || []).map(tag => `<span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded">#${tag}</span>`).join('');
+
+            switchNav('detail');
+            updateRankingTimeFilterOptions();
+            renderTimeGroupedMatches();
+            recalculateDetailRanking();
+        }
+
+        function renderTimeGroupedMatches() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+
+            const container = document.getElementById('matches-time-grouped-container');
+            container.innerHTML = '';
+
+            let timeGroups = {};
+            tour.matches.forEach(m => {
+                const key = m.time || '10:00';
+                if (!timeGroups[key]) timeGroups[key] = [];
+                timeGroups[key].push(m);
+            });
+
+            const sortedTimes = Object.keys(timeGroups).sort();
+            if (sortedTimes.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center">試合カードがありません。「＋ 試合カードを追加」を押してください。</p>`;
+                return;
+            }
+
+            sortedTimes.forEach(time => {
+                const timeBlock = document.createElement('div');
+                timeBlock.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3';
+                timeBlock.innerHTML = `
+                    <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <span class="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-2.5 py-0.5 rounded-full font-mono">⏰ 開始時刻: ${time}</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="time-grid-${time.replace(':', '')}"></div>
+                `;
+                container.appendChild(timeBlock);
+                const gridInner = timeBlock.querySelector(`#time-grid-${time.replace(':', '')}`);
+
+                timeGroups[time].forEach(m => {
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'bg-white border border-slate-200 rounded-xl p-3.5 space-y-3 shadow-sm';
+
+                    const courtOptions = (tour.courts || ['Aコート', 'Bコート']).map(c => `<option value="${c}" ${c === m.court ? 'selected' : ''}>${c}</option>`).join('');
+                    const optA = tour.teams.map(t => `<option value="${t}" ${t === m.teamA ? 'selected' : ''}>${t}</option>`).join('');
+                    const optB = tour.teams.map(t => `<option value="${t}" ${t === m.teamB ? 'selected' : ''}>${t}</option>`).join('');
+
+                    matchCard.innerHTML = `
+                        <div class="flex justify-between items-center text-xs">
+                            <div class="flex items-center gap-1.5">
+                                <select onchange="updateMatchField('${m.id}', 'court', this.value)" class="bg-slate-100 border border-slate-300 text-slate-700 rounded px-2 py-1 text-[11px] font-semibold">${courtOptions}</select>
+                                <input type="time" value="${m.time}" onchange="updateMatchField('${m.id}', 'time', this.value)" class="bg-slate-100 border border-slate-300 text-orange-600 font-mono rounded px-2 py-1 text-[11px] font-bold">
+                            </div>
+                            <button onclick="requestPasscodeProtection(() => confirmDeleteMatch('${m.id}'))" class="text-slate-400 hover:text-red-600 text-xs">削除</button>
+                        </div>
+                        <div class="grid grid-cols-11 items-center gap-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div class="col-span-4 text-center">
+                                <select onchange="updateMatchField('${m.id}', 'teamA', this.value)" class="w-full bg-white border border-slate-300 text-[11px] font-semibold text-slate-800 rounded px-1 py-1 truncate">${optA}</select>
+                            </div>
+                            <div class="col-span-3 flex items-center justify-center gap-1">
+                                <input type="number" min="0" value="${m.scoreA !== null ? m.scoreA : ''}" placeholder="0" oninput="updateMatchField('${m.id}', 'scoreA', this.value)" class="w-12 h-11 text-center text-xl font-extrabold bg-white text-orange-600 border border-slate-300 rounded-xl focus:outline-none focus:border-orange-500 shadow-inner">
+                                <span class="text-slate-400 text-sm font-bold">-</span>
+                                <input type="number" min="0" value="${m.scoreB !== null ? m.scoreB : ''}" placeholder="0" oninput="updateMatchField('${m.id}', 'scoreB', this.value)" class="w-12 h-11 text-center text-xl font-extrabold bg-white text-orange-600 border border-slate-300 rounded-xl focus:outline-none focus:border-orange-500 shadow-inner">
+                            </div>
+                            <div class="col-span-4 text-center">
+                                <select onchange="updateMatchField('${m.id}', 'teamB', this.value)" class="w-full bg-white border border-slate-300 text-[11px] font-semibold text-slate-800 rounded px-1 py-1 truncate">${optB}</select>
+                            </div>
+                        </div>
+                    `;
+                    gridInner.appendChild(matchCard);
+                });
+            });
+        }
+
+        function renderPlayersView() {
+            const leadersContainer = document.getElementById('player-leaderboards-container');
+            leadersContainer.innerHTML = '';
+
+            const categories = [
+                { key: 'pts', title: '🔥 得点王 (PTS)' },
+                { key: 'fg3', title: '🎯 3ポイント (3PM)' },
+                { key: 'reb', title: '💪 リバウンド (REB)' },
+                { key: 'ast', title: '⚡ アシスト (AST)' },
+                { key: 'min', title: '⏱ 出場時間 (MIN)' }
+            ];
+
+            categories.forEach(cat => {
+                const sorted = [...state.players].sort((a, b) => (b[cat.key] || 0) - (a[cat.key] || 0)).slice(0, 5);
+                const card = document.createElement('div');
+                card.className = 'bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 shadow-sm';
+                
+                let listHtml = sorted.map((p, i) => {
+                    return `
+                        <div class="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-none">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold w-4 text-center ${i === 0 ? 'text-amber-500' : 'text-slate-400'}">${i+1}</span>
+                                <span class="font-semibold text-slate-800">${p.name}</span>
+                            </div>
+                            <span class="font-bold font-mono text-orange-600">${p[cat.key] || 0}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                card.innerHTML = `<h4 class="text-xs font-bold text-slate-700 border-b border-slate-100 pb-1.5">${cat.title}</h4><div>${listHtml}</div>`;
+                leadersContainer.appendChild(card);
+            });
+
+            const tbody = document.getElementById('all-players-tbody');
+            tbody.innerHTML = '';
+            state.players.forEach(p => {
+                const tr = document.createElement('tr');
+                const imgContent = p.icon && p.icon.startsWith('data:') ? `<img src="${p.icon}" class="w-7 h-7 rounded-full object-cover mx-auto">` : `<span class="text-base">${p.icon || '👤'}</span>`;
+                tr.innerHTML = `
+                    <td class="p-2.5 text-center">${imgContent}</td>
+                    <td class="p-2.5 font-bold text-slate-900">#${p.number} ${p.name}</td>
+                    <td class="p-2.5 text-slate-600">所属選手</td>
+                    <td class="p-2.5 text-center">${p.pos}</td>
+                    <td class="p-2.5 text-center font-mono">${p.min || 0}m</td>
+                    <td class="p-2.5 text-center font-bold text-orange-600 font-mono">${p.pts || 0}</td>
+                    <td class="p-2.5 text-center font-mono">${p.fg2 || 0}</td>
+                    <td class="p-2.5 text-center font-mono">${p.fg3 || 0}</td>
+                    <td class="p-2.5 text-center font-mono">${p.reb || 0}</td>
+                    <td class="p-2.5 text-center font-mono">${p.ast || 0}</td>
+                    <td class="p-2.5 text-center"><button onclick="requestPasscodeProtection(() => deletePlayer('${p.id}'))" class="text-slate-400 hover:text-red-600">削除</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleImageUpload(e, type) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                state.tempImage = evt.target.result;
+                if (type === 'player') {
+                    document.getElementById('player-avatar-preview').innerHTML = `<img src="${state.tempImage}" class="w-full h-full object-cover">`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openSettingsModal() {
+            renderRulesList();
+            renderTrashList();
+            document.getElementById('modal-settings').classList.remove('hidden');
+        }
+
+        function renderRulesList() {
+            const container = document.getElementById('rules-list-container');
+            container.innerHTML = '';
+            state.rules.forEach(r => {
+                container.innerHTML += `
+                    <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex justify-between items-center text-xs">
+                        <span class="font-bold text-slate-800">${r.name}</span>
+                        <span class="text-[10px] text-slate-500">注意事項ルール</span>
+                    </div>
+                `;
+            });
+        }
+
+        function renderTrashList() {
+            const container = document.getElementById('trash-list-container');
+            container.innerHTML = '';
+            if (state.trash.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-2 italic">ゴミ箱は空です。</p>`;
+                return;
+            }
+            state.trash.forEach((item, idx) => {
+                container.innerHTML += `
+                    <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex justify-between items-center text-xs">
+                        <div><span class="text-orange-600 font-bold">[${item.type}]</span> <span class="text-slate-800">${item.data.name}</span></div>
+                        <button onclick="restoreFromTrash(${idx})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-semibold">復元</button>
+                    </div>
+                `;
+            });
+        }
+
+        function restoreFromTrash(idx) {
+            const item = state.trash[idx];
+            if (item.type === 'tournament') state.tournaments.push(item.data);
+            if (item.type === 'player') state.players.push(item.data);
+            state.trash.splice(idx, 1);
+            saveStateToStorage();
+            renderTrashList();
+            renderTournaments();
+            renderPlayersView();
+            showToast('データを復元しました');
+        }
+
+        function updateRankingTimeFilterOptions() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+
+            const select = document.getElementById('ranking-time-filter');
+            select.innerHTML = '<option value="ALL">全時間帯 (最新状況)</option>';
+            const times = Array.from(new Set(tour.matches.map(m => m.time))).sort();
+            times.forEach(t => {
+                select.innerHTML += `<option value="${t}">〜 ${t} 終了時点</option>`;
+            });
+        }
+
+        function recalculateDetailRanking() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+
+            const winPts = 3;
+            const lossPts = 0;
+            const timeFilter = document.getElementById('ranking-time-filter').value;
+
+            let stats = {};
+            (tour.teams || []).forEach(t => {
+                stats[t] = { team: t, played: 0, won: 0, lost: 0, pts: 0, pf: 0, pa: 0, diff: 0 };
+            });
+
+            tour.matches.forEach(m => {
+                if (timeFilter !== 'ALL' && m.time > timeFilter) return;
+                const { teamA, scoreA, teamB, scoreB } = m;
+                if (stats[teamA] && stats[teamB] && scoreA !== null && scoreB !== null && !isNaN(scoreA) && !isNaN(scoreB)) {
+                    stats[teamA].played++; stats[teamB].played++;
+                    stats[teamA].pf += scoreA; stats[teamA].pa += scoreB;
+                    stats[teamB].pf += scoreB; stats[teamB].pa += scoreA;
+
+                    if (scoreA > scoreB) {
+                        stats[teamA].won++; stats[teamA].pts += winPts;
+                        stats[teamB].lost++; stats[teamB].pts += lossPts;
+                    } else if (scoreB > scoreA) {
+                        stats[teamB].won++; stats[teamB].pts += winPts;
+                        stats[teamA].lost++; stats[teamA].pts += lossPts;
+                    }
+                }
+            });
+
+            Object.keys(stats).forEach(t => stats[t].diff = stats[t].pf - stats[t].pa);
+
+            let ranked = Object.values(stats).sort((a, b) => {
+                if (b.pts !== a.pts) return b.pts - a.pts;
+                if (b.diff !== a.diff) return b.diff - a.diff;
+                return b.pf - a.pf;
+            });
+
+            const tbody = document.getElementById('detail-ranking-tbody');
+            tbody.innerHTML = '';
+            ranked.forEach((st, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors font-medium';
+                const diffFormatted = st.diff > 0 ? `+${st.diff}` : `${st.diff}`;
+                tr.innerHTML = `
+                    <td class="p-2.5 text-center font-bold">${idx + 1}</td>
+                    <td class="p-2.5 font-semibold text-slate-900">${st.team}</td>
+                    <td class="p-2.5 text-center">${st.played}</td>
+                    <td class="p-2.5 text-center text-emerald-600 font-bold">${st.won}</td>
+                    <td class="p-2.5 text-center text-slate-400">${st.lost}</td>
+                    <td class="p-2.5 text-center font-bold text-orange-600 text-base">${st.pts}</td>
+                    <td class="p-2.5 text-center">${st.pf}</td>
+                    <td class="p-2.5 text-center">${st.pa}</td>
+                    <td class="p-2.5 text-center font-bold ${st.diff > 0 ? 'text-emerald-600' : (st.diff < 0 ? 'text-red-600' : '')}">${diffFormatted}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openCreateTournamentModal() {
+            state.tempImage = null;
+            const pastDatalist = document.getElementById('past-tournament-names-list');
+            pastDatalist.innerHTML = state.tournaments.map(t => `<option value="${t.name}">`).join('');
+
+            const ruleSelect = document.getElementById('new-tournament-rule');
+            ruleSelect.innerHTML = state.rules.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+
+            document.getElementById('new-tournament-name').value = '';
+            document.getElementById('new-tournament-location').value = '';
+            document.getElementById('new-tournament-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-create-tournament').classList.remove('hidden');
+        }
+
+        function saveNewTournament() {
+            const name = document.getElementById('new-tournament-name').value.trim();
+            const location = document.getElementById('new-tournament-location').value.trim();
+            const date = document.getElementById('new-tournament-date').value;
+            const timeStart = document.getElementById('new-tournament-time-start').value;
+            const timeEnd = document.getElementById('new-tournament-time-end').value;
+            const ruleId = document.getElementById('new-tournament-rule').value;
+            const tagsRaw = document.getElementById('new-tournament-tags').value.trim();
+            const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()) : [];
+
+            if (!name) { showToast('大会名を入力してください'); return; }
+
+            state.tournaments.push({
+                id: 'tour-' + Date.now(),
+                name, location: location || '未設定', date: date || new Date().toISOString().split('T')[0],
+                timeStart, timeEnd, ruleId, tags, courts: ['Aコート', 'Bコート'], teams: ['Aチーム', 'Bチーム'], matches: []
+            });
+
+            sortTournamentsByDate();
+            saveStateToStorage();
+            closeModal('modal-create-tournament');
+            renderTournaments();
+            showToast('大会を作成しました');
+        }
+
+        function openCreatePlayerModal() {
+            state.tempImage = null;
+            document.getElementById('player-avatar-preview').innerHTML = '👤';
+            document.getElementById('new-player-number').value = '';
+            document.getElementById('new-player-name').value = '';
+            document.getElementById('modal-create-player').classList.remove('hidden');
+        }
+
+        function saveNewPlayer() {
+            const num = document.getElementById('new-player-number').value.trim();
+            const name = document.getElementById('new-player-name').value.trim();
+            const pos = document.getElementById('new-player-pos').value;
+            if (!num || !name) { showToast('背番号と名前を入力してください'); return; }
+
+            state.players.push({
+                id: 'p-' + Date.now(),
+                number: num, name, pos,
+                icon: state.tempImage || '👤',
+                min: 0, pts: 0, fg2: 0, fg3: 0, reb: 0, ast: 0
+            });
+
+            saveStateToStorage();
+            closeModal('modal-create-player');
+            renderPlayersView();
+            showToast('選手を登録しました');
+        }
+
+        function deletePlayer(playerId) {
+            const idx = state.players.findIndex(p => p.id === playerId);
+            if (idx !== -1) {
+                const deleted = state.players.splice(idx, 1)[0];
+                state.trash.push({ type: 'player', data: deleted });
+                saveStateToStorage();
+                renderPlayersView();
+                showToast('選手を削除しました');
+            }
+        }
+
+        function confirmDeleteTournament() {
+            const tour = state.tournaments.find(t => t.id === state.activeTournamentId);
+            if (!tour) return;
+            const idx = state.tournaments.findIndex(t => t.id === state.activeTournamentId);
+            state.trash.push({ type: 'tournament', data: tour });
+            state.tournaments.splice(idx, 1);
+            saveStateToStorage();
+            showToast('大会を削除（ゴミ箱へ移動）しました');
+            switchNav('dashboard');
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("コピーしました！");
+        }
+    </script>
+</body>
+</html>
